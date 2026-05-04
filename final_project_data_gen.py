@@ -7,6 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/1MQSxeSYOTVQwpZbjZ4jj-StVNBi2HiUx
 """
 
+!pip install --upgrade --force-reinstall sympy
+
 from os import write
 import random
 import csv
@@ -22,7 +24,7 @@ def clean_string(expr):
     Sympi returns powers as ** and multiplication as * so this puts
     this Sympi equations in more readable format
     '''
-    return str(expr).replace("**", "^").replace("*", "")
+    return str(expr).replace("**", "^")
 
 
 def format_factor(r):
@@ -50,24 +52,21 @@ def generate_linear_equation():
 
     eq = Eq(a * x + b, c)
 
-    if b != 0:
-        next_eq = Eq(a * x, c - b)
-    else:
-        next_eq = Eq(x, int(c / a))
+    step1 = Eq(a * x, c - b)
+    step2 = Eq(x, solution)
 
-    input_text = clean_string(eq.lhs) + " = " + clean_string(eq.rhs) + " ->"
-    target_text = clean_string(next_eq.lhs) + " = " + clean_string(next_eq.rhs)
-    solution_input = target_text + " ->"
-    solution_text = "x= " + str(solution)
-
-    return {
-        "type": "linear",
-        "input_text": input_text,
-        "target_text": target_text,
-        "solution": solution,
-        "solution_input": solution_input,
-        "solution_text": solution_text
-    }
+    return [
+        {
+            "type": "linear",
+            "input_text": clean_string(eq.lhs) + " = " + clean_string(eq.rhs) + " ->",
+            "target_text": clean_string(step1.lhs) + " = " + clean_string(step1.rhs)
+        },
+        {
+            "type": "linear",
+            "input_text": clean_string(step1.lhs) + " = " + clean_string(step1.rhs) + " ->",
+            "target_text": clean_string(step2.lhs) + " = " + clean_string(step2.rhs)
+        }
+    ]
 
 
 def generate_factorable_quadratic():
@@ -85,21 +84,29 @@ def generate_factorable_quadratic():
     factored_expr = (x - r1) * (x - r2)
     expanded_expr = simplify(expand(factored_expr))
 
-    input_text = clean_string(expanded_expr) + " = 0 ->"
-    target_text = f"{format_factor(r1)}{format_factor(r2)} = 0"
+    expanded_text = clean_string(expanded_expr) + " = 0"
+    factored_text = f"{format_factor(r1)} * {format_factor(r2)} = 0"
+    solution_text = f"x = {r1} or x = {r2}"
 
-    return {
-        "type": "quadratic",
-        "input_text": input_text,
-        "target_text": target_text,
-        "roots": (r1, r2)
-    }
+    return [
+        {
+            "type": "quadratic",
+            "input_text": expanded_text + " ->",
+            "target_text": factored_text
+        },
+        {
+            "type": "quadratic",
+            "input_text": factored_text + " ->",
+            "target_text": solution_text
+        }
+    ]
 
 
 def generate_example():
     '''
     Helper function to generate an example either linear or quadratic
     '''
+
     kind = random.choice(["linear", "quadratic"])
 
     if kind == "linear":
@@ -107,13 +114,17 @@ def generate_example():
     else:
         return generate_factorable_quadratic()
 
-
 def generate_dataset(n_examples=1000):
     '''
     Generate a dataset of n_examples examples
     '''
-    return [generate_example() for _ in range(n_examples)]
+    rows = []
 
+    for _ in range(n_examples):
+        example_rows = generate_example()
+        rows.extend(example_rows)
+
+    return rows
 
 def save_dataset_csv(filename, examples):
     '''
@@ -122,22 +133,12 @@ def save_dataset_csv(filename, examples):
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["type", "input_text", "target_text"])
         writer.writeheader()
-        for ex in examples:
-            writer.writerow({
-                "type": ex["type"],
-                "input_text": ex["input_text"],
-                "target_text": ex["target_text"]
-            })
-            if(ex["type"] == "linear"):
-                  writer.writerow({
-                    "type": ex["type"],
-                    "input_text": ex["solution_input"],
-                    "target_text": ex["solution_text"]
-                  })
 
+        for ex in examples:
+            writer.writerow(ex)
 
 if __name__ == "__main__":
-    examples = generate_dataset(10)
+    examples = generate_dataset(30000)
 
     for ex in examples[:10]:
         print(ex["type"])
