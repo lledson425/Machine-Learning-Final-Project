@@ -10,7 +10,7 @@ Original file is located at
 import torch
 import torch.nn as nn
 
-class SeuussModel(nn.Module):
+class SeussModel(nn.Module):
     def __init__(self, vocab_size, context_length, embedding_dim, hidden_dim):
         super().__init__()
         self.context_length = context_length
